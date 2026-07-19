@@ -30,18 +30,20 @@ DEFAULT_QWEN_MODEL = os.environ.get("MORROW_QWEN_MODEL", "Qwen/Qwen3-VL-8B-Instr
 
 
 class QwenBackend:
-    def __init__(self, model: str | None = None, dtype: str = "auto", max_new_tokens: int = 8192):
-        import torch  # noqa: F401 — imported for side effect of failing loud if absent
+    def __init__(self, model: str | None = None, dtype=None, device: str | None = None,
+                 max_new_tokens: int = 8192):
+        import torch
         from transformers import AutoModelForImageTextToText, AutoProcessor
 
         self.model_id = model or DEFAULT_QWEN_MODEL
         self.max_new_tokens = max_new_tokens
+        self.device = device or _pick_device(torch)
+        self.torch_dtype = _pick_dtype(torch, dtype, self.device)
         self.processor = AutoProcessor.from_pretrained(self.model_id)
-        self.model = AutoModelForImageTextToText.from_pretrained(
-            self.model_id, dtype=dtype, device_map="auto"
-        )
+        self.model = AutoModelForImageTextToText.from_pretrained(self.model_id, dtype=self.torch_dtype)
+        self.model.to(self.device)
         self.model.eval()
-        self._info = self._build_info(dtype)
+        self._info = self._build_info()
 
     def info(self) -> dict:
         return dict(self._info)
@@ -65,7 +67,7 @@ class QwenBackend:
         text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         inputs = self.processor(
             text=[text], images=images or None, return_tensors="pt"
-        ).to(self.model.device)
+        ).to(self.device)
 
         t0 = time.perf_counter()
         with torch.no_grad():
@@ -82,17 +84,61 @@ class QwenBackend:
         usage = {"input_tokens": int(prompt_len), "output_tokens": int(new_tokens.shape[0])}
         return Generation(parsed=parsed, raw_text=raw_text, usage=usage, latency_s=latency)
 
-    def _build_info(self, dtype: str) -> dict:
+    def _build_info(self) -> dict:
         snapshot = _resolve_snapshot_dir(self.model_id, self.model)
         return {
             "backend": "qwen",
             "model": self.model_id,
             "revision": getattr(self.model.config, "_commit_hash", None),
-            "dtype": str(getattr(self.model, "dtype", dtype)),
+            "device": str(self.device),
+            "dtype": str(self.torch_dtype).replace("torch.", ""),
             "quantization": _quantization(self.model),
             # A sampled head/tail fingerprint, not a full-weights digest — named honestly.
             "weight_fingerprint_sha256": _weight_fingerprint(snapshot),
+            # Exact runtime the result depends on — reproducibility over loose version bounds.
+            "environment": _environment(),
         }
+
+
+def _environment() -> dict:
+    import os
+    import platform as pl
+
+    import torch
+
+    def _ver(mod: str):
+        try:
+            return __import__(mod).__version__
+        except Exception:
+            return None
+
+    return {
+        "torch": torch.__version__,
+        "torchvision": _ver("torchvision"),
+        "transformers": _ver("transformers"),
+        "pillow": _ver("PIL"),
+        "accelerate": _ver("accelerate"),
+        "python": pl.python_version(),
+        "platform": pl.platform(),
+        "mac_version": pl.mac_ver()[0] or None,
+        "mps_fallback": os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK"),
+    }
+
+
+def _pick_device(torch) -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def _pick_dtype(torch, dtype, device: str):
+    if dtype is None:
+        return torch.float32 if device == "cpu" else torch.bfloat16
+    if isinstance(dtype, str):
+        return getattr(torch, dtype)
+    return dtype
 
 
 def _to_pil(jpeg: bytes):
