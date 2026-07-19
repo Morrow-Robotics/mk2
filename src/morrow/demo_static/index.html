@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MK2 — Baseline-0 dashboard</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header>
+    <h1>MK2 · Baseline-0 dashboard</h1>
+    <p class="sub">Demonstration &rarr; evidence-backed WorkflowSpec. This shows the project's real
+      current state — frozen human gold, deterministic validation, and any completed runs. No fabricated execution.</p>
+  </header>
+
+  <main>
+    <section id="runtime" class="panel">
+      <h2>Runtime</h2>
+      <div class="body">loading…</div>
+    </section>
+
+    <section id="pipeline" class="panel">
+      <h2>Pipeline · Ingest &rarr; Observe &rarr; Synthesize &rarr; Validate</h2>
+      <div class="body">loading…</div>
+    </section>
+
+    <section id="baseline" class="panel">
+      <h2>Baseline-0 status</h2>
+      <div class="body">loading…</div>
+    </section>
+
+    <section id="cases" class="panel">
+      <h2>Cases</h2>
+      <nav id="case-tabs"></nav>
+      <div id="case-detail" class="body">select a case…</div>
+    </section>
+
+    <section id="live" class="panel">
+      <h2>Live analysis</h2>
+      <p class="sub">Optional. Instantiates Qwen only when you click Run. Output is a preview,
+        labelled separately, and never written to the canonical Baseline-0 artifacts.</p>
+      <div class="controls">
+        <label>Case
+          <select id="live-case">
+            <option value="development">development</option>
+            <option value="holdout">holdout</option>
+            <option value="negative">negative</option>
+          </select>
+        </label>
+        <label>Model / checkpoint
+          <input id="live-model" type="text" placeholder="(default checkpoint)">
+        </label>
+        <label>Frames
+          <input id="live-frames" type="number" value="8" min="1" max="64">
+        </label>
+        <button id="live-run">Run live analysis</button>
+      </div>
+      <div id="live-output"></div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

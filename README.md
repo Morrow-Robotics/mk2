@@ -50,6 +50,19 @@ Writes the WorkflowSpec JSON to stdout (or `--out`) and prints an evidence timel
 open questions, and any validation issues to stderr. Exit code is non-zero if the spec
 fails a hard invariant. For the Baseline-0 eval harness, see `eval/BASELINE_0.md`.
 
+## Dashboard
+
+```bash
+morrow demo   # http://127.0.0.1:8000
+```
+
+A dependency-free localhost dashboard (stdlib HTTP server, no Torch required) showing
+the project's real current state: detected runtime hardware, the frozen human gold
+specs with deterministic validation, the Ingest → Observe → Synthesize → Validate
+pipeline, and any completed run artifacts. An optional "Run live analysis" control
+instantiates Qwen only on click and renders its output separately, labelled and never
+written to the canonical Baseline-0 artifacts.
+
 ## Layout
 
 ```

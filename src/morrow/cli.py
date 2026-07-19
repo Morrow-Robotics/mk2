@@ -24,8 +24,20 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--frames", type=int, default=8, help="frames to sample from the video")
     a.add_argument("--out", help="write the WorkflowSpec JSON here (default: stdout)")
 
+    d = sub.add_parser("demo", help="launch the localhost state dashboard")
+    d.add_argument("--host", default="127.0.0.1")
+    d.add_argument("--port", type=int, default=8000)
+
     args = parser.parse_args(argv)
 
+    if args.command == "demo":
+        from .demo import serve  # local import keeps the http server off the analyze path
+        return serve(args.host, args.port)
+
+    return _cmd_analyze(args)
+
+
+def _cmd_analyze(args) -> int:
     transcript = Path(args.transcript).read_text() if args.transcript else None
     result = analyze(args.video, args.description, transcript=transcript, frames=args.frames)
 
