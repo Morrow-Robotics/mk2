@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+# Local eval media and model outputs — keep the repo about code and gold specs.
+eval/videos/
+*.mp4
+*.mov
+out/
