@@ -1,0 +1,122 @@
+{
+  "task_summary": "Pack office items into an open carton on a desk. The demonstration places a picture frame, a spiral notebook and a mug into the carton; it does not close the carton and leaves other desk items unpacked.",
+  "entities": [
+    {
+      "id": "carton",
+      "name": "shipping carton",
+      "role": "container",
+      "evidence": [
+        {"source": "video", "start_s": 0.3, "end_s": 9.0, "note": "open cardboard box at the back of the desk, contains white packing paper"}
+      ]
+    },
+    {
+      "id": "picture_frame",
+      "name": "framed photo",
+      "role": "item",
+      "evidence": [
+        {"source": "video", "start_s": 0.3, "end_s": 3.7, "note": "silver/gold picture frame holding a photo of two people; first item packed"}
+      ]
+    },
+    {
+      "id": "notebook",
+      "name": "spiral notebook",
+      "role": "item",
+      "evidence": [
+        {"source": "video", "start_s": 3.6, "end_s": 4.9, "note": "cream spiral-bound notebook; second item packed"}
+      ]
+    },
+    {
+      "id": "mug",
+      "name": "light blue mug",
+      "role": "item",
+      "evidence": [
+        {"source": "video", "start_s": 0.3, "end_s": 8.9, "note": "light blue ceramic mug sitting on the desk; packed last"}
+      ]
+    }
+  ],
+  "initial_state": [
+    {
+      "description": "The carton is open and empty apart from white packing paper.",
+      "entity_ids": ["carton"],
+      "evidence": [{"source": "video", "start_s": 0.3, "end_s": 1.4, "note": "box open and empty at the start"}]
+    },
+    {
+      "description": "The picture frame, notebook and mug are on the desk, not yet packed.",
+      "entity_ids": ["picture_frame", "notebook", "mug"],
+      "evidence": [{"source": "video", "start_s": 0.3, "end_s": 1.4}]
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "action": "place",
+      "description": "Pick up the picture frame and place it into the carton.",
+      "entity_ids": ["picture_frame", "carton"],
+      "start_s": 2.5,
+      "end_s": 3.7,
+      "evidence": [{"source": "video", "start_s": 2.5, "end_s": 3.7, "note": "frame lifted ~2.5s, lying inside the carton by ~3.7s"}],
+      "confidence": 0.85
+    },
+    {
+      "id": "s2",
+      "action": "place",
+      "description": "Place the spiral notebook into the carton on top of the frame.",
+      "entity_ids": ["notebook", "carton"],
+      "start_s": 3.6,
+      "end_s": 4.9,
+      "evidence": [{"source": "video", "start_s": 3.6, "end_s": 4.9, "note": "notebook laid into the carton"}],
+      "confidence": 0.8
+    },
+    {
+      "id": "s3",
+      "action": "place",
+      "description": "Pick up the mug and lower it into the carton.",
+      "entity_ids": ["mug", "carton"],
+      "start_s": 7.0,
+      "end_s": 8.9,
+      "evidence": [{"source": "video", "start_s": 7.0, "end_s": 8.9, "note": "mug picked up ~7.0s and lowered into the carton at the end of the clip"}],
+      "confidence": 0.85
+    }
+  ],
+  "final_goals": [
+    {
+      "description": "The picture frame, notebook and mug are inside the carton.",
+      "entity_ids": ["picture_frame", "notebook", "mug", "carton"],
+      "evidence": [{"source": "video", "start_s": 8.7, "end_s": 8.9, "note": "all three items in the carton by the end of the clip"}]
+    },
+    {
+      "description": "The carton is closed.",
+      "entity_ids": ["carton"],
+      "evidence": [{"source": "description", "quote": "Pack the visible office items into the carton and close it.", "note": "closing is stated in the description but is NOT shown in the video; the clip ends with the carton open"}]
+    }
+  ],
+  "ordering": [
+    {
+      "before": "s1",
+      "after": "s2",
+      "observed": true,
+      "necessity": "unknown",
+      "rationale": "The frame was placed before the notebook, but nothing indicates the order is required; the items are independent.",
+      "evidence": [{"source": "video", "start_s": 2.5, "end_s": 4.9}]
+    },
+    {
+      "before": "s2",
+      "after": "s3",
+      "observed": true,
+      "necessity": "unknown",
+      "rationale": "The notebook was placed before the mug, but the order appears incidental.",
+      "evidence": [{"source": "video", "start_s": 3.6, "end_s": 8.9}]
+    }
+  ],
+  "hard_constraints": [],
+  "soft_preferences": [],
+  "repeat": null,
+  "unknowns": [
+    {
+      "question": "Should the workflow pack only the picture frame, notebook and mug demonstrated, or all visible office supplies (e.g. the markers, highlighter pack and folders left on the desk)?",
+      "why_it_matters": "It defines the scope of the task - which objects the robot must pack and when the task is complete."
+    }
+  ],
+  "confidence": 0.55,
+  "status": "needs_confirmation"
+}

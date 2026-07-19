@@ -1,0 +1,66 @@
+{
+  "task_summary": "Two people handle items around a large carton labelled 'TAPA' in a staged room. The camera is low and the carton interior is never visible, so the packing task cannot be specified from this clip.",
+  "entities": [
+    {
+      "id": "carton",
+      "name": "large carton labelled TAPA",
+      "role": "container",
+      "evidence": [
+        {"source": "video", "start_s": 0.45, "end_s": 10.3, "note": "tall cardboard box, 'TAPA' (Spanish for lid) printed on the side; the interior is never visible"}
+      ]
+    },
+    {
+      "id": "plastic_bag",
+      "name": "plastic bag with red contents",
+      "role": "item",
+      "evidence": [
+        {"source": "video", "start_s": 0.45, "end_s": 4.9, "note": "transparent plastic bag with red/orange contents, handled near the carton"}
+      ]
+    },
+    {
+      "id": "product_box",
+      "name": "printed product box",
+      "role": "item",
+      "evidence": [
+        {"source": "video", "start_s": 8.5, "end_s": 8.5, "note": "blue printed retail box with icons, held over the carton by the two people"}
+      ]
+    }
+  ],
+  "initial_state": [
+    {
+      "description": "The carton is upright and open; its interior is not visible.",
+      "entity_ids": ["carton"],
+      "evidence": [{"source": "video", "start_s": 0.45, "end_s": 8.5, "note": "low camera angle; only the outside of the box is ever shown"}]
+    }
+  ],
+  "steps": [],
+  "final_goals": [],
+  "ordering": [],
+  "hard_constraints": [],
+  "soft_preferences": [],
+  "repeat": null,
+  "unknowns": [
+    {
+      "question": "Are items being placed into the carton or taken out of it?",
+      "why_it_matters": "The direction of the task (packing vs. unpacking) is the most basic thing needed and cannot be determined."
+    },
+    {
+      "question": "Which items belong in the carton? A plastic bag and a printed product box are handled, but the carton interior is never shown.",
+      "why_it_matters": "Without seeing what ends up inside, the contents and goal state cannot be specified."
+    },
+    {
+      "question": "Is the carton closed at the end?",
+      "why_it_matters": "The final state is never shown."
+    },
+    {
+      "question": "What are the two people's roles?",
+      "why_it_matters": "It is unclear who is packing and whether this is a task demonstration at all."
+    },
+    {
+      "question": "The camera angle is low and the carton opening is occluded throughout — can the packing actions be captured at all from this viewpoint?",
+      "why_it_matters": "If not, a new recording with a clear overhead view of the carton is required."
+    }
+  ],
+  "confidence": 0.2,
+  "status": "needs_new_video"
+}

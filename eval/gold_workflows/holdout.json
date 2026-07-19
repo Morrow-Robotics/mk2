@@ -1,0 +1,86 @@
+{
+  "task_summary": "Pack a single wrapped product into a mailer box and close the box.",
+  "entities": [
+    {
+      "id": "carton",
+      "name": "mailer box",
+      "role": "container",
+      "evidence": [
+        {"source": "video", "start_s": 0.5, "end_s": 12.3, "note": "small kraft mailer box, open at the start, closed by the end"}
+      ]
+    },
+    {
+      "id": "product",
+      "name": "paper-wrapped product",
+      "role": "item",
+      "evidence": [
+        {"source": "video", "start_s": 0.5, "end_s": 5.0, "note": "flat item wrapped in white paper; 'paper-wrapped product' is a sufficient role selector for this task"}
+      ]
+    }
+  ],
+  "initial_state": [
+    {
+      "description": "The mailer box is open and empty.",
+      "entity_ids": ["carton"],
+      "evidence": [{"source": "video", "start_s": 0.5, "end_s": 1.4, "note": "box open and empty at the start"}]
+    },
+    {
+      "description": "The wrapped product is on the table beside the box.",
+      "entity_ids": ["product"],
+      "evidence": [{"source": "video", "start_s": 0.5, "end_s": 1.4}]
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "action": "insert",
+      "description": "Place the wrapped product into the mailer box.",
+      "entity_ids": ["product", "carton"],
+      "start_s": 2.3,
+      "end_s": 5.0,
+      "evidence": [{"source": "video", "start_s": 2.3, "end_s": 5.0, "note": "product inside the box and being pressed down by ~5.0s"}],
+      "confidence": 0.85
+    },
+    {
+      "id": "s2",
+      "action": "close",
+      "description": "Fold the flaps closed over the product.",
+      "entity_ids": ["carton"],
+      "start_s": 5.9,
+      "end_s": 8.7,
+      "evidence": [{"source": "video", "start_s": 5.9, "end_s": 8.7, "note": "box closed by ~8.7s"}],
+      "confidence": 0.85
+    }
+  ],
+  "final_goals": [
+    {
+      "description": "The wrapped product is inside the carton.",
+      "entity_ids": ["product", "carton"],
+      "evidence": [{"source": "video", "start_s": 5.0, "end_s": 5.0, "note": "product seated inside the box"}]
+    },
+    {
+      "description": "The carton is closed.",
+      "entity_ids": ["carton"],
+      "evidence": [
+        {"source": "video", "start_s": 8.7, "end_s": 12.3, "note": "box observed closed"},
+        {"source": "description", "quote": "Pack the product into the carton and close it."}
+      ]
+    }
+  ],
+  "ordering": [
+    {
+      "before": "s1",
+      "after": "s2",
+      "observed": true,
+      "necessity": "required",
+      "rationale": "The product must be inside before the box is closed - a physical constraint, and it is demonstrated in this order.",
+      "evidence": [{"source": "video", "start_s": 2.3, "end_s": 8.7, "note": "product placed, then flaps closed over it"}]
+    }
+  ],
+  "hard_constraints": [],
+  "soft_preferences": [],
+  "repeat": null,
+  "unknowns": [],
+  "confidence": 0.85,
+  "status": "accepted"
+}
