@@ -131,6 +131,44 @@ def test_missing_video_is_handled(tmp_path):
     assert demo.case_payload(tmp_path, CLIPS["development"])["video"]["present"] is False
 
 
+def _seed_gold(tmp_path):
+    d = tmp_path / "eval" / "gold_workflows"
+    d.mkdir(parents=True)
+    (d / "development.json").write_text((REPO_ROOT / "eval/gold_workflows/development.json").read_text())
+
+
+def test_eval_payload_empty_when_no_run(tmp_path):
+    _seed_gold(tmp_path)
+    payload = demo.eval_payload(tmp_path, CLIPS["development"])
+    assert payload["gold"] is not None
+    assert payload["runs"] == []
+
+
+def test_eval_payload_reads_a_model_run(tmp_path):
+    _seed_gold(tmp_path)
+    rd = tmp_path / "eval" / "exploratory" / "runs" / "development-abc123"
+    rd.mkdir(parents=True)
+    spec_text = (REPO_ROOT / "eval/gold_workflows/development.json").read_text()
+    (rd / "manifest.json").write_text(json.dumps({
+        "run_id": "abc123", "kind": "exploratory-not-baseline0",
+        "backend": {"model": "Qwen/Qwen3-VL-2B-Instruct", "device": "mps"},
+        "frames": 8, "stage_status": {"observe": "parsed", "synthesize": "parsed"}, "telemetry": {},
+    }))
+    (rd / "workflowspec.json").write_text(spec_text)
+    (rd / "validation.json").write_text("[]")
+    payload = demo.eval_payload(tmp_path, CLIPS["development"])
+    assert len(payload["runs"]) == 1
+    r = payload["runs"][0]
+    assert r["run_id"] == "abc123" and r["spec"] is not None and r["stage_status"]["synthesize"] == "parsed"
+
+
+def test_status_has_schema_hash_and_libraries(real_server):
+    import json as _j
+    data = _j.loads(_get(real_server + "/api/status")[2])
+    assert len(data["baseline0"]["schema_sha256"]) == 64
+    assert "torch" in data["runtime"]["libraries"]
+
+
 def test_byte_range_requests(tmp_path):
     # Hermetic: a dummy video file, no ffmpeg needed.
     vids = tmp_path / "data" / "videos"

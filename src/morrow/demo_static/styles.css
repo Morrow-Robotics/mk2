@@ -47,17 +47,11 @@ h3 { margin: 18px 0 8px; font-size: 11px; font-weight: 600; color: var(--muted);
 
 .view { max-width: 1180px; margin: 0 auto; padding: 22px 24px; }
 .view.hidden { display: none; }
-#view-research { display: grid; gap: 20px; }
 
 .panel { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; }
 
 /* ---------- demo: case bar ---------- */
 .case-bar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-#case-tabs, #rcase-tabs { display: flex; gap: 8px; }
-#case-tabs button, #rcase-tabs button { background: var(--bg); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 6px 16px; cursor: pointer; font: inherit; font-size: 13px; }
-#case-tabs button:hover, #rcase-tabs button:hover { background: var(--surface); }
-#case-tabs button.active, #rcase-tabs button.active { border-color: var(--blue); color: var(--blue); background: #e8f0fe; }
-.replay-note { color: var(--muted); font-size: 12.5px; max-width: 52ch; }
 
 .banner { display: inline-block; padding: 3px 10px; border-radius: 6px; font-weight: 600; letter-spacing: .03em; font-size: 11px; text-transform: uppercase; margin-right: 6px; }
 .banner.gold { background: #fef7e0; color: var(--orange-ink); border: 1px solid #feefc3; }
@@ -159,3 +153,42 @@ button#live-run:hover { background: #1765cc; }
 button#live-run:disabled { background: var(--line); color: var(--muted); cursor: default; }
 pre { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 10px; padding: 14px; overflow: auto; font-size: 12px; }
 .err { color: var(--bad); }
+
+/* ---------- three-surface IA additions ---------- */
+#view-system { display: grid; gap: 20px; }
+.tabs { display: flex; gap: 8px; }
+.tabs button { background: var(--bg); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 6px 16px; cursor: pointer; font: inherit; font-size: 13px; }
+.tabs button:hover { background: var(--surface); }
+.tabs button.active { border-color: var(--blue); color: var(--blue); background: #e8f0fe; }
+.runsel select { margin-left: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; font: inherit; }
+
+.instruction { margin: 4px 0 14px; font-size: 15px; }
+.ilabel { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; margin-right: 8px; }
+#rv-source { font-size: 12px; }
+.outcome { margin: 12px 0 4px; min-height: 24px; }
+.inspector-line { font-size: 13px; margin-top: 6px; }
+.badge { display: inline-block; padding: 3px 12px; border-radius: 999px; font-weight: 600; font-size: 12px; }
+.badge.ok { background: #e6f4ea; color: var(--ok); }
+.badge.warn { background: #fef7e0; color: var(--warn); }
+.badge.bad { background: #fce8e6; color: var(--bad); }
+
+.empty { padding: 40px 24px; text-align: center; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 12px; }
+.empty b { font-size: 16px; }
+.empty .muted { margin-top: 8px; }
+
+.run-head { background: var(--surface); border: 1px solid var(--line-soft); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; line-height: 1.9; }
+.buckets { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.bucket { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.bucket h3 { margin: 0 0 2px; color: var(--ink); font-size: 13px; text-transform: none; letter-spacing: 0; }
+.bucket.schema { border-color: var(--bad); }
+.bq { font-size: 11.5px; margin-bottom: 8px; }
+
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+@media (max-width: 760px) { .compare { grid-template-columns: 1fr; } }
+.compare .col { background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.compare .col h3 { margin-top: 0; }
+.ss { padding: 4px 0; border-bottom: 1px solid var(--line-soft); font-size: 12.5px; }
+.ss-k { color: var(--muted); display: inline-block; min-width: 74px; }
+
+details.panel summary { cursor: pointer; font-weight: 500; }
+details.panel[open] summary { margin-bottom: 12px; }

@@ -9,6 +9,7 @@ and only when the user asks for it. The dashboard is fully usable without Torch.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import platform
@@ -73,7 +74,19 @@ def _runtime() -> dict:
         "mps_available": mps,
         "cuda_available": cuda,
         "cuda_devices": cuda_devices,
+        "libraries": _lib_versions(),
     }
+
+
+def _lib_versions() -> dict:
+    # Version strings only — importing these modules loads no model weights.
+    out = {}
+    for mod in ("torch", "torchvision", "transformers", "pydantic", "PIL", "accelerate", "anthropic"):
+        try:
+            out[mod] = __import__(mod).__version__ if importlib.util.find_spec(mod) else None
+        except Exception:
+            out[mod] = None
+    return out
 
 
 def _checkpoint_local(model: str) -> bool:
@@ -162,6 +175,8 @@ def status_report(repo_root: Path) -> dict:
         "baseline0": {
             "prompt_version": PROMPT_VERSION,
             "prompt_fingerprint": prompt_fingerprint(),
+            "schema_sha256": hashlib.sha256(
+                json.dumps(WorkflowSpec.model_json_schema(), sort_keys=True).encode()).hexdigest(),
             "gold": gold,
             "runs_present": have_runs,
             "checklist": [
@@ -241,6 +256,71 @@ def case_payload(repo_root: Path, clip: ClipConfig) -> dict:
     }
 
 
+# --- evaluation: model runs vs gold -----------------------------------------
+
+def eval_payload(repo_root: Path, clip: ClipConfig) -> dict:
+    spec = _load_gold(repo_root, clip.name)
+    return {
+        "name": clip.name,
+        "role": clip.role,
+        "description": clip.description,
+        "gold": spec.model_dump() if spec else None,
+        "runs": _find_model_runs(repo_root, clip.name),
+    }
+
+
+def _find_model_runs(repo_root: Path, name: str) -> list[dict]:
+    """Completed model runs for this case, exploratory first then canonical Baseline-0."""
+    runs = []
+    sources = [(repo_root / "eval" / "exploratory" / "runs", "exploratory",
+                repo_root / "eval" / "exploratory" / "scores"),
+               (repo_root / "eval" / "runs", "baseline0", repo_root / "eval" / "scores")]
+    for runs_dir, default_kind, scores_dir in sources:
+        if not runs_dir.is_dir():
+            continue
+        for d in sorted(runs_dir.glob(f"{name}-*")):
+            man = d / "manifest.json"
+            if not man.is_file():
+                continue
+            manifest = json.loads(man.read_text())
+            rid = manifest.get("run_id", "")
+            runs.append({
+                "run_id": rid,
+                "kind": manifest.get("kind", default_kind),
+                "dir": str(d.relative_to(repo_root)),
+                "backend": manifest.get("backend"),
+                "frames": manifest.get("frames"),
+                "frame_timestamps": manifest.get("frame_timestamps"),
+                "stage_status": manifest.get("stage_status"),
+                "telemetry": manifest.get("telemetry"),
+                "peak_rss_bytes": manifest.get("peak_rss_bytes"),
+                "mps_memory": manifest.get("mps_memory"),
+                "spec": _read_json(d / "workflowspec.json"),
+                "observations": _read_json(d / "observations.json"),
+                "validation": _read_json(d / "validation.json") or [],
+                "observation_raw": _read_text(d / "observation_raw.txt"),
+                "synthesis_raw": _read_text(d / "synthesis_raw.txt"),
+                "scoreboard": _scoreboard_for(scores_dir, rid),
+                "side_by_side": _read_text(d / "side_by_side.md"),
+            })
+    return runs
+
+
+def _scoreboard_for(scores_dir: Path, run_id: str):
+    if not run_id or not scores_dir.is_dir():
+        return None
+    hits = sorted(scores_dir.glob(f"{run_id}__*.json"))
+    return json.loads(hits[0].read_text()) if hits else None
+
+
+def _read_json(p: Path):
+    return json.loads(p.read_text()) if p.is_file() else None
+
+
+def _read_text(p: Path):
+    return p.read_text() if p.is_file() else None
+
+
 # --- HTTP handler -----------------------------------------------------------
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -271,6 +351,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             if not clip:
                 return self._send_json({"error": f"unknown case {name!r}"}, 404)
             return self._send_json(case_payload(self.repo_root, clip))
+        if path.startswith("/api/eval/"):
+            name = path[len("/api/eval/"):]
+            clip = CLIPS.get(name)
+            if not clip:
+                return self._send_json({"error": f"unknown case {name!r}"}, 404)
+            return self._send_json(eval_payload(self.repo_root, clip))
         if path.startswith("/media/"):
             return self._serve_media(path[len("/media/"):])
         return self._send_json({"error": "not found"}, 404)
