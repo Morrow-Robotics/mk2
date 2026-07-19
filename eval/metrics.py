@@ -18,6 +18,10 @@ from collections import Counter
 
 from morrow.schemas import WorkflowSpec
 
+# Bump when any metric definition changes. Scores are keyed by this, so an old score
+# and a new one never silently blur together.
+METRICS_VERSION = "m0"
+
 
 def _norm(s: str) -> str:
     return re.sub(r"\s+", " ", s.strip().lower()).strip(" .,;:!?")

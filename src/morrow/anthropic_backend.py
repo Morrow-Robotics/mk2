@@ -32,7 +32,7 @@ class AnthropicBackend:
             "revision": None,
             "dtype": None,
             "quantization": None,
-            "weight_sha256": None,
+            "weight_fingerprint_sha256": None,
         }
 
     def generate(self, *, system: str, content: list[Block], schema: type[BaseModel]) -> Generation:

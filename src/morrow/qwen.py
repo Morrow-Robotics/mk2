@@ -90,7 +90,8 @@ class QwenBackend:
             "revision": getattr(self.model.config, "_commit_hash", None),
             "dtype": str(getattr(self.model, "dtype", dtype)),
             "quantization": _quantization(self.model),
-            "weight_sha256": _weight_fingerprint(snapshot),
+            # A sampled head/tail fingerprint, not a full-weights digest — named honestly.
+            "weight_fingerprint_sha256": _weight_fingerprint(snapshot),
         }
 
 

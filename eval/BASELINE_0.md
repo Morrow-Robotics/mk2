@@ -8,8 +8,8 @@ The backend under test is **local Qwen3-VL** — the stack mk2 plans to ship. It
 unproven: MK1's frozen POC3 run used the 2B model and did badly, so Baseline-0 measures
 Qwen honestly rather than assuming it works. Anthropic is available as an optional
 comparison backend (`--backend anthropic`) but is not the default and needs no key to
-run the default stack. Full backend provenance — model, revision, quantization, weight
-hash — is recorded in every manifest and folded into the run id.
+run the default stack. Full backend provenance — model, revision, quantization, and a
+sampled weight fingerprint — is recorded in every manifest and folded into the run id.
 
 ## Clips
 
@@ -22,9 +22,10 @@ hash — is recorded in every manifest and folded into the run id.
 The generic descriptions are deliberate: the text carries intent, the video must carry
 item identities, the observed steps, and the sequence.
 
-## Scoreboard (per run, in `scoreboard.json`)
+## Scoreboard (per run, in `eval/scores/`, keyed by run_id + gold_sha256 + metrics_version)
 
-Reported separately — never blended into one number.
+Reported separately — never blended into one number. Scoring is decoupled from the
+immutable inference run, so a changed gold yields a fresh score, never a stale one.
 
 - **self** (no gold needed): status, confidence, entity/step/goal/constraint counts,
   ordering breakdown (observed / required / not_required / unknown), evidence coverage,
