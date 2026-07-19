@@ -7,14 +7,20 @@ name = "morrow"
 version = "0.0.1"
 description = "Film a demo, describe what you want, get an evidence-backed WorkflowSpec."
 requires-python = ">=3.11"
-# Two dependencies, each earning its place: pydantic makes the WorkflowSpec contract
-# enforceable, anthropic is the model backend. ffmpeg/ffprobe are system tools, not deps.
+# Core is the local Qwen stack: pydantic makes the WorkflowSpec contract enforceable;
+# torch/transformers/pillow run Qwen3-VL locally. ffmpeg/ffprobe are system tools, not
+# deps. The model weights are provided separately. Anthropic is an optional comparison
+# backend, not required to run the default stack.
 dependencies = [
-    "anthropic>=0.40",
     "pydantic>=2",
+    "torch>=2.2",
+    "transformers>=4.57",
+    "pillow>=10",
+    "accelerate>=0.30",
 ]
 
 [project.optional-dependencies]
+anthropic = ["anthropic>=0.40"]
 dev = ["pytest>=8"]
 
 [project.scripts]

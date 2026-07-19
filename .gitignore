@@ -7,7 +7,7 @@ dist/
 build/
 .pytest_cache/
 # Local eval media and model outputs — keep the repo about code and gold specs.
-eval/videos/
+# Video files are ignored by extension so the data/videos README stays tracked.
 *.mp4
 *.mov
 out/

@@ -1,16 +1,16 @@
-"""End-to-end harness smoke test with a mock client and a synthetic video.
+"""End-to-end harness smoke test with a mock backend and a synthetic video.
 
 Proves the plumbing — frame sampling, both passes, validation, artifact writing,
-deterministic run ids, no-overwrite, and the scoreboard — without touching the network.
-The only thing this does not exercise is real model behaviour, which is the point.
+deterministic run ids (including backend provenance), no-overwrite, and the scoreboard —
+without weights or network. The only thing not exercised is real model behaviour.
 """
 
 import subprocess
 
 from clips import ClipConfig
 from run import run_clip
-from types import SimpleNamespace
 
+from morrow.backend import Generation
 from morrow.model import ObservedEntity, ObservedEvent, Observations
 from morrow.schemas import Entity, Evidence, StateFact, Step, WorkflowSpec
 
@@ -38,19 +38,17 @@ SPEC = WorkflowSpec(
 )
 
 
-class _Resp:
-    def __init__(self, parsed):
-        self.parsed_output = parsed
-        self.content = [SimpleNamespace(type="text", text=parsed.model_dump_json())]
-        self.usage = SimpleNamespace(model_dump=lambda: {"input_tokens": 100, "output_tokens": 50})
-        self.stop_reason = "end_turn"
+class MockBackend:
+    """A Backend that returns canned observations then spec, with plausible provenance."""
 
+    def info(self) -> dict:
+        return {"backend": "mock", "model": "mock-1", "revision": "r0",
+                "dtype": "float32", "quantization": "none", "weight_sha256": "0" * 64}
 
-class _MockClient:
-    class messages:  # noqa: N801 — mirrors the SDK's client.messages surface
-        @staticmethod
-        def parse(*, output_format, **_):
-            return _Resp(OBS if output_format is Observations else SPEC)
+    def generate(self, *, system, content, schema) -> Generation:
+        parsed = OBS if schema is Observations else SPEC
+        return Generation(parsed=parsed, raw_text=parsed.model_dump_json(),
+                          usage={"input_tokens": 100, "output_tokens": 50}, latency_s=0.0)
 
 
 def _synthetic_video(path) -> None:
@@ -66,7 +64,7 @@ def test_harness_writes_full_artifact_and_is_idempotent(tmp_path):
     clip = ClipConfig(name="smoke", role="development", source="test", description="pack it")
     out_root = tmp_path / "runs"
 
-    out = run_clip(clip, str(video), frames=3, out_root=out_root, client=_MockClient())
+    out = run_clip(clip, str(video), frames=3, out_root=out_root, backend=MockBackend())
 
     assert not out["skipped"]
     for name in ("manifest.json", "observation_raw.txt", "observations.json",
@@ -79,6 +77,21 @@ def test_harness_writes_full_artifact_and_is_idempotent(tmp_path):
     assert sb["critical_checks"]["all_facts_traceable"] is True
 
     # Deterministic id + no overwrite: a second identical run is skipped.
-    again = run_clip(clip, str(video), frames=3, out_root=out_root, client=_MockClient())
+    again = run_clip(clip, str(video), frames=3, out_root=out_root, backend=MockBackend())
     assert again["skipped"] is True
     assert again["run_id"] == out["run_id"]
+
+
+def test_run_id_tracks_backend_provenance(tmp_path):
+    # Different weights (different provenance) must yield a different run id.
+    video = tmp_path / "synthetic.mp4"
+    _synthetic_video(video)
+    clip = ClipConfig(name="smoke", role="development", source="test", description="pack it")
+
+    class OtherWeights(MockBackend):
+        def info(self):
+            return {**super().info(), "weight_sha256": "f" * 64}
+
+    a = run_clip(clip, str(video), frames=3, out_root=tmp_path / "a", backend=MockBackend())
+    b = run_clip(clip, str(video), frames=3, out_root=tmp_path / "b", backend=OtherWeights())
+    assert a["run_id"] != b["run_id"]

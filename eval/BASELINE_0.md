@@ -4,6 +4,13 @@ The first honest measurement of the mk2 thesis: does demonstration + generic
 description produce a correct, evidence-backed WorkflowSpec? Prompt version **v0** is
 frozen (hashes in every run's `manifest.json`); the three clips run once, unchanged.
 
+The backend under test is **local Qwen3-VL** — the stack mk2 plans to ship. It is
+unproven: MK1's frozen POC3 run used the 2B model and did badly, so Baseline-0 measures
+Qwen honestly rather than assuming it works. Anthropic is available as an optional
+comparison backend (`--backend anthropic`) but is not the default and needs no key to
+run the default stack. Full backend provenance — model, revision, quantization, weight
+hash — is recorded in every manifest and folded into the run id.
+
 ## Clips
 
 | role | source | description (intent only — video must supply the specifics) |
@@ -45,20 +52,22 @@ classify each failure against the signal that reveals it:
 | typed transcript materially helps | rerun with `--transcript`; compare scoreboards | then add transcription |
 | crucial interaction unseen | not in any sampled frame | capture protocol, or reject honestly (`needs_new_video`) |
 
-## Runbook (blocked on video files + an API key)
+## Runbook (needs local Qwen weights + compute — no API key)
 
-Pexels blocks scripted download and `ANTHROPIC_API_KEY` is unset here, so the runs
-cannot be produced from this environment. Once the three files exist locally and a key
-is set:
+mk2 is self-contained. Put the three source videos in `data/videos/` (see its README),
+have the Qwen3-VL checkpoint available locally (default `Qwen/Qwen3-VL-8B-Instruct`,
+override with `MORROW_QWEN_MODEL` or `--model`), then:
 
 ```bash
-export ANTHROPIC_API_KEY=...
-python eval/run.py development --video path/to/pexels-7581335.mp4
-python eval/run.py holdout     --video path/to/pexels-7855140.mp4
-python eval/run.py negative    --video path/to/mixkit-42119.mp4
+python eval/run.py development --video data/videos/pexels_7581335.mp4
+python eval/run.py holdout     --video data/videos/pexels_7855140.mp4
+python eval/run.py negative    --video data/videos/mixkit_42119.mp4
 ```
 
-Gold specs (`eval/gold_workflows/{development,holdout,negative}.json`) should be authored
+No `ANTHROPIC_API_KEY`. Running Qwen requires local weights and GPU/MPS compute — that
+is the one remaining prerequisite, and it is compute the runner cannot fabricate.
+
+Gold specs (`eval/gold_workflows/{development,holdout,negative}.json`) must be authored
 from the videos **before** reading any run output; until they exist, `scoreboard.gold`
 is null and only self-metrics + gold-free critical checks are reported. The Baseline-0
 error report is this file plus the three `scoreboard.json`s, read through the table above.

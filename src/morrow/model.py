@@ -1,43 +1,28 @@
-"""The model passes: frames + words -> grounded observations -> WorkflowSpec.
+"""The two passes: frames + words -> grounded observations -> WorkflowSpec.
 
 Two explicit calls, not one. The observation pass reports only what is visible or
-stated. The synthesis pass turns those observations into a WorkflowSpec and is the
-only place the observed / required / unknown distinction gets decided. Splitting them
-keeps grounding honest: the synthesizer can only build on facts the observer already
-tied to a timestamp or a quote.
+stated. The synthesis pass turns those observations into a WorkflowSpec and is the only
+place the observed / required / unknown distinction gets decided. Splitting them keeps
+grounding honest: the synthesizer can only build on facts the observer already tied to
+a timestamp or a quote.
 
-One model, called directly. No adapter interface yet — there is exactly one backend,
-and an abstraction for a second one that does not exist would be dead weight.
-
-The two system prompts below are frozen as prompt version v0 (see PROMPT_VERSION).
-`prompt_fingerprint()` hashes them so a run log can prove which prompt produced it.
+Both passes are backend-agnostic — they assemble neutral content blocks and a target
+schema and hand them to a `Backend`. The two system prompts below are frozen as prompt
+version v0 (see PROMPT_VERSION); `prompt_fingerprint()` hashes them so a run log can
+prove which prompt produced it. Model identity is the backend's provenance, not this file's.
 """
 
 from __future__ import annotations
 
-import base64
 import hashlib
-import time
-from dataclasses import dataclass
 
-import anthropic
 from pydantic import BaseModel
 
+from .backend import Backend, Block, Generation, Image, Text
 from .ingest import Frame, VideoMeta
 from .schemas import WorkflowSpec
 
-MODEL = "claude-opus-4-8"
 PROMPT_VERSION = "v0"
-
-
-@dataclass
-class PassResult:
-    """One model pass: the parsed object plus everything a run log needs to keep."""
-
-    parsed: object  # Observations | WorkflowSpec
-    raw_json: str
-    usage: dict
-    latency_s: float
 
 
 class ObservedEntity(BaseModel):
@@ -101,9 +86,8 @@ upgrade an observed order to required without a stated reason.
 
 
 def prompt_fingerprint() -> dict:
-    """Model id, prompt version, and content hashes — the proof of what a run used."""
+    """Prompt version and content hashes — the proof of which frozen prompt a run used."""
     return {
-        "model": MODEL,
         "prompt_version": PROMPT_VERSION,
         "observe_system_sha256": hashlib.sha256(OBSERVE_SYSTEM.encode()).hexdigest(),
         "synthesize_system_sha256": hashlib.sha256(SYNTHESIZE_SYSTEM.encode()).hexdigest(),
@@ -114,70 +98,26 @@ def observe(
     frames: list[Frame],
     meta: VideoMeta,
     description: str,
-    transcript: str | None = None,
-    client: anthropic.Anthropic | None = None,
-) -> PassResult:
+    transcript: str | None,
+    backend: Backend,
+) -> Generation:
     """First pass: extract grounded entities, events, and narration claims from the demo."""
-    client = client or anthropic.Anthropic()
-
-    blocks: list[dict] = [{"type": "text", "text": _observe_intro(meta, description, transcript)}]
+    content: list[Block] = [Text(_observe_intro(meta, description, transcript))]
     for f in frames:
-        blocks.append({"type": "text", "text": f"Frame at t={f.timestamp_s:.2f}s:"})
-        blocks.append({
-            "type": "image",
-            "source": {
-                "type": "base64",
-                "media_type": "image/jpeg",
-                "data": base64.standard_b64encode(f.jpeg).decode("ascii"),
-            },
-        })
-
-    t0 = time.perf_counter()
-    resp = client.messages.parse(
-        model=MODEL,
-        max_tokens=16000,
-        thinking={"type": "adaptive"},
-        system=OBSERVE_SYSTEM,
-        messages=[{"role": "user", "content": blocks}],
-        output_format=Observations,
-    )
-    latency = time.perf_counter() - t0
-    if resp.parsed_output is None:
-        raise RuntimeError(f"observation pass returned no parseable result (stop_reason={resp.stop_reason})")
-    return PassResult(resp.parsed_output, _raw_text(resp), _usage(resp), latency)
+        content.append(Text(f"Frame at t={f.timestamp_s:.2f}s:"))
+        content.append(Image(f.jpeg))
+    return backend.generate(system=OBSERVE_SYSTEM, content=content, schema=Observations)
 
 
 def synthesize(
     observations: Observations,
     description: str,
-    transcript: str | None = None,
-    client: anthropic.Anthropic | None = None,
-) -> PassResult:
+    transcript: str | None,
+    backend: Backend,
+) -> Generation:
     """Second pass: turn grounded observations into a WorkflowSpec."""
-    client = client or anthropic.Anthropic()
-
-    t0 = time.perf_counter()
-    resp = client.messages.parse(
-        model=MODEL,
-        max_tokens=16000,
-        thinking={"type": "adaptive"},
-        system=SYNTHESIZE_SYSTEM,
-        messages=[{"role": "user", "content": _synthesis_input(observations, description, transcript)}],
-        output_format=WorkflowSpec,
-    )
-    latency = time.perf_counter() - t0
-    if resp.parsed_output is None:
-        raise RuntimeError(f"synthesis pass returned no parseable result (stop_reason={resp.stop_reason})")
-    return PassResult(resp.parsed_output, _raw_text(resp), _usage(resp), latency)
-
-
-def _raw_text(resp) -> str:
-    return "".join(getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text")
-
-
-def _usage(resp) -> dict:
-    u = resp.usage
-    return u.model_dump() if hasattr(u, "model_dump") else dict(u)
+    content: list[Block] = [Text(_synthesis_input(observations, description, transcript))]
+    return backend.generate(system=SYNTHESIZE_SYSTEM, content=content, schema=WorkflowSpec)
 
 
 def _observe_intro(meta: VideoMeta, description: str, transcript: str | None) -> str:

@@ -24,9 +24,22 @@ Order is soft unless narration or physics makes it mandatory. Every inferred fac
 `Evidence` (a video timespan or a quote). `validate.py` enforces that; the model can't be
 trusted to.
 
+## Backend
+
+The default and intended stack is **local Qwen3-VL** via Transformers — open weights,
+no API key. It is an *unproven* baseline (MK1's frozen run used the 2B model and did
+badly); Baseline-0 exists to measure it honestly. A minimal `Backend` boundary
+(`src/morrow/backend.py`) keeps the WorkflowSpec, prompt v0, and the harness identical
+across backends; only how the schema is elicited differs (Qwen: appended JSON-schema
+instruction; Anthropic: structured-output API). Every run records full backend
+provenance — model, revision, quantization, weight hash — in its manifest and run id.
+
+Anthropic is an **optional comparison backend** (`pip install '.[anthropic]'`,
+`--backend anthropic`), not required for the default stack.
+
 ## Usage
 
-Needs `ffmpeg`/`ffprobe` on PATH and `ANTHROPIC_API_KEY` set.
+Needs `ffmpeg`/`ffprobe` on PATH, plus a local Qwen3-VL checkpoint and GPU/MPS compute.
 
 ```bash
 pip install -e '.[dev]'
@@ -35,7 +48,7 @@ morrow analyze demo.mp4 --description "Pack the completed bags into the carton"
 
 Writes the WorkflowSpec JSON to stdout (or `--out`) and prints an evidence timeline,
 open questions, and any validation issues to stderr. Exit code is non-zero if the spec
-fails a hard invariant.
+fails a hard invariant. For the Baseline-0 eval harness, see `eval/BASELINE_0.md`.
 
 ## Layout
 
