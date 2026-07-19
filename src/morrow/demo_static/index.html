@@ -3,38 +3,80 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MK2 — Baseline-0 dashboard</title>
+  <title>Morrow · MK2</title>
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
   <header>
-    <h1>MK2 · Baseline-0 dashboard</h1>
-    <p class="sub">Demonstration &rarr; evidence-backed WorkflowSpec. This shows the project's real
-      current state — frozen human gold, deterministic validation, and any completed runs. No fabricated execution.</p>
+    <div class="brand">
+      <h1>Morrow</h1>
+      <span class="pill">MK2</span>
+    </div>
+    <nav class="viewnav">
+      <button data-view="demo" class="active">Demo</button>
+      <button data-view="research">Research console</button>
+    </nav>
   </header>
 
-  <main>
-    <section id="runtime" class="panel">
-      <h2>Runtime</h2>
-      <div class="body">loading…</div>
-    </section>
-
-    <section id="pipeline" class="panel">
-      <h2>Pipeline · Ingest &rarr; Observe &rarr; Synthesize &rarr; Validate</h2>
-      <div class="body">loading…</div>
-    </section>
-
-    <section id="baseline" class="panel">
-      <h2>Baseline-0 status</h2>
-      <div class="body">loading…</div>
-    </section>
-
-    <section id="cases" class="panel">
-      <h2>Cases</h2>
+  <!-- ============ DEMO: synchronized video → workflow graph ============ -->
+  <main id="view-demo" class="view">
+    <div class="case-bar">
       <nav id="case-tabs"></nav>
-      <div id="case-detail" class="body">select a case…</div>
-    </section>
+      <div class="replay-note">
+        <span class="banner gold">Analysis replay · frozen human gold</span>
+        Nodes are revealed at their cited timestamps as the video plays — a replay of a
+        completed spec, not live model reasoning.
+      </div>
+    </div>
 
+    <div class="replay-stage">
+      <div class="stage-left">
+        <div id="video-wrap">
+          <video id="rv" preload="metadata" playsinline></video>
+        </div>
+        <div id="timeline" class="timeline"></div>
+        <div class="replay-controls">
+          <button id="rv-play">▶ Play replay</button>
+          <button id="rv-restart">↺ Restart</button>
+          <span id="rv-clock" class="muted mono"></span>
+        </div>
+      </div>
+
+      <div class="stage-right">
+        <div id="graph" class="graph">
+          <svg class="edges" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z"></path>
+              </marker>
+              <marker id="arrow-req" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z"></path>
+              </marker>
+            </defs>
+          </svg>
+          <div class="nodes"></div>
+          <div id="graph-status" class="graph-status"></div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+
+    <section id="inspector" class="panel">
+      <h2>Inspector</h2>
+      <div id="inspector-body" class="muted">Click any node to see its cited evidence and jump the video there.</div>
+    </section>
+  </main>
+
+  <!-- ============ RESEARCH CONSOLE (the previous dashboard) ============ -->
+  <main id="view-research" class="view hidden">
+    <section id="runtime" class="panel"><h2>Runtime</h2><div class="body">loading…</div></section>
+    <section id="pipeline" class="panel"><h2>Pipeline · Ingest → Observe → Synthesize → Validate</h2><div class="body">loading…</div></section>
+    <section id="baseline" class="panel"><h2>Baseline-0 status</h2><div class="body">loading…</div></section>
+    <section id="research-case" class="panel">
+      <h2>Case detail</h2>
+      <nav id="rcase-tabs"></nav>
+      <div id="rcase-detail" class="body">select a case…</div>
+    </section>
     <section id="live" class="panel">
       <h2>Live analysis</h2>
       <p class="sub">Optional. Instantiates Qwen only when you click Run. Output is a preview,
@@ -47,12 +89,8 @@
             <option value="negative">negative</option>
           </select>
         </label>
-        <label>Model / checkpoint
-          <input id="live-model" type="text" placeholder="(default checkpoint)">
-        </label>
-        <label>Frames
-          <input id="live-frames" type="number" value="8" min="1" max="64">
-        </label>
+        <label>Model / checkpoint <input id="live-model" type="text" placeholder="(default checkpoint)"></label>
+        <label>Frames <input id="live-frames" type="number" value="8" min="1" max="64"></label>
         <button id="live-run">Run live analysis</button>
       </div>
       <div id="live-output"></div>
