@@ -8,11 +8,17 @@ tied to a timestamp or a quote.
 
 One model, called directly. No adapter interface yet — there is exactly one backend,
 and an abstraction for a second one that does not exist would be dead weight.
+
+The two system prompts below are frozen as prompt version v0 (see PROMPT_VERSION).
+`prompt_fingerprint()` hashes them so a run log can prove which prompt produced it.
 """
 
 from __future__ import annotations
 
 import base64
+import hashlib
+import time
+from dataclasses import dataclass
 
 import anthropic
 from pydantic import BaseModel
@@ -21,6 +27,17 @@ from .ingest import Frame, VideoMeta
 from .schemas import WorkflowSpec
 
 MODEL = "claude-opus-4-8"
+PROMPT_VERSION = "v0"
+
+
+@dataclass
+class PassResult:
+    """One model pass: the parsed object plus everything a run log needs to keep."""
+
+    parsed: object  # Observations | WorkflowSpec
+    raw_json: str
+    usage: dict
+    latency_s: float
 
 
 class ObservedEntity(BaseModel):
@@ -83,13 +100,23 @@ upgrade an observed order to required without a stated reason.
 - Report calibrated `confidence` in [0, 1]. Do not manufacture detail to seem complete."""
 
 
+def prompt_fingerprint() -> dict:
+    """Model id, prompt version, and content hashes — the proof of what a run used."""
+    return {
+        "model": MODEL,
+        "prompt_version": PROMPT_VERSION,
+        "observe_system_sha256": hashlib.sha256(OBSERVE_SYSTEM.encode()).hexdigest(),
+        "synthesize_system_sha256": hashlib.sha256(SYNTHESIZE_SYSTEM.encode()).hexdigest(),
+    }
+
+
 def observe(
     frames: list[Frame],
     meta: VideoMeta,
     description: str,
     transcript: str | None = None,
     client: anthropic.Anthropic | None = None,
-) -> Observations:
+) -> PassResult:
     """First pass: extract grounded entities, events, and narration claims from the demo."""
     client = client or anthropic.Anthropic()
 
@@ -105,6 +132,7 @@ def observe(
             },
         })
 
+    t0 = time.perf_counter()
     resp = client.messages.parse(
         model=MODEL,
         max_tokens=16000,
@@ -113,9 +141,10 @@ def observe(
         messages=[{"role": "user", "content": blocks}],
         output_format=Observations,
     )
+    latency = time.perf_counter() - t0
     if resp.parsed_output is None:
         raise RuntimeError(f"observation pass returned no parseable result (stop_reason={resp.stop_reason})")
-    return resp.parsed_output
+    return PassResult(resp.parsed_output, _raw_text(resp), _usage(resp), latency)
 
 
 def synthesize(
@@ -123,10 +152,11 @@ def synthesize(
     description: str,
     transcript: str | None = None,
     client: anthropic.Anthropic | None = None,
-) -> WorkflowSpec:
-    """Second pass: turn grounded observations into a validated WorkflowSpec."""
+) -> PassResult:
+    """Second pass: turn grounded observations into a WorkflowSpec."""
     client = client or anthropic.Anthropic()
 
+    t0 = time.perf_counter()
     resp = client.messages.parse(
         model=MODEL,
         max_tokens=16000,
@@ -135,9 +165,19 @@ def synthesize(
         messages=[{"role": "user", "content": _synthesis_input(observations, description, transcript)}],
         output_format=WorkflowSpec,
     )
+    latency = time.perf_counter() - t0
     if resp.parsed_output is None:
         raise RuntimeError(f"synthesis pass returned no parseable result (stop_reason={resp.stop_reason})")
-    return resp.parsed_output
+    return PassResult(resp.parsed_output, _raw_text(resp), _usage(resp), latency)
+
+
+def _raw_text(resp) -> str:
+    return "".join(getattr(b, "text", "") for b in resp.content if getattr(b, "type", None) == "text")
+
+
+def _usage(resp) -> dict:
+    u = resp.usage
+    return u.model_dump() if hasattr(u, "model_dump") else dict(u)
 
 
 def _observe_intro(meta: VideoMeta, description: str, transcript: str | None) -> str:
@@ -151,9 +191,7 @@ def _observe_intro(meta: VideoMeta, description: str, transcript: str | None) ->
 
 
 def _synthesis_input(observations: Observations, description: str, transcript: str | None) -> str:
-    lines = [
-        f"User's written description of the task:\n{description}",
-    ]
+    lines = [f"User's written description of the task:\n{description}"]
     if transcript:
         lines.append(f"\nTranscript of in-video narration:\n{transcript}")
     lines.append(f"\nGrounded observations (JSON):\n{observations.model_dump_json(indent=2)}")

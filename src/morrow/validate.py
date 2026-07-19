@@ -32,8 +32,21 @@ def validate(spec: WorkflowSpec, meta: VideoMeta) -> list[Issue]:
 
     _check_references(spec, entity_ids, step_ids, issues)
     _check_evidence_present(spec, issues)
+    _check_necessity_grounded(spec, issues)
     _check_evidence_bounds(spec, meta, issues)
     return issues
+
+
+def _check_necessity_grounded(spec, issues) -> None:
+    # Critical invariant: an order may only be called required/not_required with
+    # evidence. "Observed" alone never establishes necessity — that stays unknown.
+    for rel in spec.ordering:
+        if rel.necessity != "unknown" and not rel.evidence:
+            issues.append(Issue(
+                "error",
+                f"ordering {rel.before!r}->{rel.after!r} claims necessity "
+                f"{rel.necessity!r} with no evidence",
+            ))
 
 
 def _check_references(spec, entity_ids, step_ids, issues) -> None:

@@ -2,7 +2,7 @@
 evidence, and out-of-range timestamps."""
 
 from morrow.ingest import VideoMeta
-from morrow.schemas import Entity, Evidence, Step, StateFact, WorkflowSpec
+from morrow.schemas import Entity, Evidence, OrderRelation, Step, StateFact, WorkflowSpec
 from morrow.validate import validate
 
 META = VideoMeta(path="x.mp4", duration_s=10.0, width=1920, height=1080, fps=30.0)
@@ -48,3 +48,18 @@ def test_timestamp_past_duration_is_an_error():
     spec = _spec(steps=[Step(id="s1", action="place", description="d", entity_ids=["e1"],
                              evidence=[Evidence(source="video", start_s=999.0)], confidence=0.5)])
     assert any(i.severity == "error" and "outside" in i.message for i in validate(spec, META))
+
+
+def test_required_order_without_evidence_is_an_error():
+    # The core invariant: necessity may not be asserted without grounding.
+    spec = _spec(
+        steps=[
+            Step(id="s1", action="open", description="open box", entity_ids=["e1"],
+                 evidence=[Evidence(source="video", start_s=1.0)], confidence=0.5),
+            Step(id="s2", action="fill", description="fill box", entity_ids=["e1"],
+                 evidence=[Evidence(source="video", start_s=2.0)], confidence=0.5),
+        ],
+        ordering=[OrderRelation(before="s1", after="s2", observed=True,
+                                necessity="required", rationale="assumed", evidence=[])],
+    )
+    assert any(i.severity == "error" and "necessity" in i.message for i in validate(spec, META))

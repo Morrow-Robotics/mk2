@@ -1,8 +1,8 @@
 """Orchestration: a video and a description in, a validated WorkflowSpec out.
 
-ingest -> observe -> synthesize -> validate. The `Analysis` keeps the intermediate
-observations and the deterministic issues alongside the spec, so a caller can see how
-the spec was reached and decide what to do with one that parsed but failed a check.
+ingest -> observe -> synthesize -> validate. The `Analysis` keeps the two model
+passes (with their raw responses, token usage, and latency) and the deterministic
+issues alongside the spec, so a run log can preserve exactly how the spec was reached.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import anthropic
 
 from .ingest import VideoMeta, probe, sample_frames
-from .model import Observations, observe, synthesize
+from .model import Observations, PassResult, observe, synthesize
 from .schemas import WorkflowSpec
 from .validate import Issue, validate
 
@@ -20,9 +20,18 @@ from .validate import Issue, validate
 @dataclass
 class Analysis:
     meta: VideoMeta
-    observations: Observations
-    spec: WorkflowSpec
+    obs_pass: PassResult
+    synth_pass: PassResult
     issues: list[Issue]
+    frame_timestamps: list[float]
+
+    @property
+    def observations(self) -> Observations:
+        return self.obs_pass.parsed
+
+    @property
+    def spec(self) -> WorkflowSpec:
+        return self.synth_pass.parsed
 
 
 def analyze(
@@ -35,7 +44,13 @@ def analyze(
     client = client or anthropic.Anthropic()
     meta = probe(video_path)
     sampled = sample_frames(video_path, meta, frames)
-    observations = observe(sampled, meta, description, transcript, client)
-    spec = synthesize(observations, description, transcript, client)
-    issues = validate(spec, meta)
-    return Analysis(meta=meta, observations=observations, spec=spec, issues=issues)
+    obs_pass = observe(sampled, meta, description, transcript, client)
+    synth_pass = synthesize(obs_pass.parsed, description, transcript, client)
+    issues = validate(synth_pass.parsed, meta)
+    return Analysis(
+        meta=meta,
+        obs_pass=obs_pass,
+        synth_pass=synth_pass,
+        issues=issues,
+        frame_timestamps=[f.timestamp_s for f in sampled],
+    )
